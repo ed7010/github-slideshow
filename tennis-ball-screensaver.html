@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Tennis Ball Screensaver</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            touch-action: none;
+        }
+
+        #canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .controls:hover {
+            opacity: 1;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        button:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .fullscreen-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-size: 14px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .fullscreen-btn:hover {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                top: 10px;
+                right: 10px;
+                gap: 5px;
+            }
+
+            button {
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+
+            .fullscreen-btn {
+                bottom: 10px;
+                right: 10px;
+                padding: 12px 20px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="pauseBtn">Pause</button>
+        <button id="resetBtn">Reset</button>
+    </div>
+
+    <button class="fullscreen-btn" id="fullscreenBtn">Fullscreen</button>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let animationId;
+        let isRunning = false;
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Tennis ball properties
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 40,
+            vx: 4,
+            vy: 3,
+            gravity: 0.15,
+            friction: 0.99,
+            bounce: 0.85
+        };
+
+        // Draw tennis ball
+        function drawTennisBall(x, y, radius) {
+            // Main ball body
+            const gradient = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, radius * 0.1, x, y, radius);
+            gradient.addColorStop(0, '#d4ff00');
+            gradient.addColorStop(0.7, '#c5f000');
+            gradient.addColorStop(1, '#8bb800');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tennis ball seam curve
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 3;
+
+            // Left curve
+            ctx.beginPath();
+            ctx.arc(x - radius * 0.3, y, radius * 0.9, -Math.PI * 0.6, Math.PI * 0.6);
+            ctx.stroke();
+
+            // Right curve (mirrored)
+            ctx.beginPath();
+            ctx.arc(x + radius * 0.3, y, radius * 0.9, Math.PI * 0.4, Math.PI * 1.6);
+            ctx.stroke();
+
+            // Add shadow for depth
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(x, canvas.height - 5, radius * 0.8, radius * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Animation loop
+        function animate() {
+            if (!isRunning) return;
+
+            // Clear canvas
+            ctx.fillStyle = 'rgba(30, 60, 114, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Apply gravity
+            ball.vy += ball.gravity;
+
+            // Apply friction
+            ball.vx *= ball.friction;
+            ball.vy *= ball.friction;
+
+            // Update position
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // Bounce off walls
+            if (ball.x + ball.radius > canvas.width) {
+                ball.x = canvas.width - ball.radius;
+                ball.vx *= -ball.bounce;
+            }
+            if (ball.x - ball.radius < 0) {
+                ball.x = ball.radius;
+                ball.vx *= -ball.bounce;
+            }
+
+            // Bounce off floor and ceiling
+            if (ball.y + ball.radius > canvas.height) {
+                ball.y = canvas.height - ball.radius;
+                ball.vy *= -ball.bounce;
+
+                // Add some random horizontal velocity on bounce
+                if (Math.abs(ball.vx) < 2) {
+                    ball.vx += (Math.random() - 0.5) * 3;
+                }
+            }
+            if (ball.y - ball.radius < 0) {
+                ball.y = ball.radius;
+                ball.vy *= -ball.bounce;
+            }
+
+            // Keep minimum velocity to prevent ball from stopping
+            if (Math.abs(ball.vx) < 0.5) ball.vx = 2 * (Math.random() > 0.5 ? 1 : -1);
+            if (Math.abs(ball.vy) < 0.5) ball.vy = 2;
+
+            // Draw tennis ball
+            drawTennisBall(ball.x, ball.y, ball.radius);
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Control buttons
+        document.getElementById('startBtn').addEventListener('click', () => {
+            if (!isRunning) {
+                isRunning = true;
+                animate();
+            }
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            isRunning = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            isRunning = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+
+            // Reset ball position and velocity
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.vx = 4;
+            ball.vy = 3;
+
+            // Clear canvas
+            ctx.fillStyle = 'rgba(30, 60, 114, 1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawTennisBall(ball.x, ball.y, ball.radius);
+        });
+
+        // Fullscreen button
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log('Fullscreen request failed:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // Tap to start on mobile
+        canvas.addEventListener('click', () => {
+            if (!isRunning) {
+                isRunning = true;
+                animate();
+            }
+        });
+
+        // Prevent scrolling on mobile
+        document.body.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Initial draw
+        ctx.fillStyle = 'rgba(30, 60, 114, 1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawTennisBall(ball.x, ball.y, ball.radius);
+
+        // Auto-start
+        setTimeout(() => {
+            isRunning = true;
+            animate();
+        }, 500);
+    </script>
+</body>
+</html>
